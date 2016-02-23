@@ -6,7 +6,6 @@
  * @author  Sheldon Led <sheldonled.ms@gmail.com>
  */
 class Dir {
-	
 	public static function listFiles($folderId = false){
 		$cfgfile = Utils::getConfigFile();
 		if(is_string($cfgfile))
@@ -22,10 +21,10 @@ class Dir {
 		if(!$folderId)
 			$folderId = $cfgfile["folder"];
 
-		$pageToken = NULL;
-		$fileList = array();
-		$folderId = (is_null($folderId) ? $service->about->get()->getRootFolderId() : $folderId);
-
+		$pageToken	= NULL;
+		$fileList	= array();
+		$folderId	= (is_null($folderId) ? $service->about->get()->getRootFolderId() : $folderId);
+		$i			= -1;
 		do {
 			try {
 				$parameters = array();
@@ -37,13 +36,8 @@ class Dir {
 
 				foreach ($children->getItems() as $child) {
 					$fileId = $child->getId();
-					$fileList[$fileId] = "true";
-					/*$file = $service->files->get($fileId);
-					$fileList[$fileId] = [
-						"name" => $file->getTitle(),
-						"type" => $file->getMimeType(),
-						"downloadUrl" => $file->getDownloadUrl()
-					];*/
+					$file = $service->files->get($fileId);
+					$fileList[++$i] = File::getFileData($fileId);
 				}
 				$pageToken = $children->getNextPageToken();
 			} catch (Exception $e) {
@@ -52,6 +46,20 @@ class Dir {
 			}
 		} while ($pageToken);
 		return $fileList;
+	}
+
+	public static function haveFileName($folderId = false){
+		$cfgfile = Utils::getConfigFile();
+		if(is_string($cfgfile))
+			return $cfgfile;
+
+		$client = Utils::getGoogleClient();
+
+		if(is_string($client))
+			return $client;
+
+		$service = new Google_Service_Drive($client);
+		
 	}
 
 }

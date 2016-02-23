@@ -71,7 +71,7 @@ class Utils {
 	}
 
 	public static function setToken($authCode){
-		$client = Utils::getGoogleClient();
+		$client = Utils::getGoogleClient(false);
 
 		if(!$token = fopen(dirname(__FILE__)."/token","r+")) {
 			return "Error while creating the token file";

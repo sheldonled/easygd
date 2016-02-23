@@ -35,24 +35,53 @@
 				fclose($cfgfile);
 			}
 			break;
+		case 'chosenfolder':
+			$cfgfile = Utils::getConfigFile();
+			if(is_string($cfgfile)){
+				echo $cfgfile;
+				break;
+			}
+			$folder = File::getFileData($cfgfile["folder"]);
+			if(!is_array($folder))
+				echo "Error while getting folder name";
+			else
+				echo $folder["name"];
+			break;//send break
 		case 'settoken':
 			echo Utils::setToken($_POST["authcode"]);
 			break;//send break
-		case 'send':
-
+		case 'upload':
+			echo File::upload($_FILES["fileupload"]);
 			break;//send break
 		case 'list':
 			$result = Dir::listFiles();
 			if(is_string($result))
 				echo $result;
 			else
-				json_encode($result);
+				echo json_encode($result);
 			break;//list break
 		case 'deletefile':
+			$result = File::delete($_GET["fileid"]);
+			if($result == "ok")
+				echo "The file was successfully deleted from Google Drive";
+			else
+				echo $result;
 			break;//deletefile break
 		
 		case 'downloadfile':
+			if(strpos($_GET["filetype"],"google")) {
+				die("This is a Google File, Can not be downloaded.");
+			}
+			$result = File::getFileContent($_GET["fileid"]);
 
+			if(strlen($result) > 500){
+				header('Content-Disposition: attachment; filename="'.$_GET["filename"].'"');
+				header('Content-Type: '.$_GET["filetype"]);
+				header("Content-Length: " . strlen($result));
+				echo $result;
+			} else {
+				echo $result;
+			}
 			break;//downloadfile break
 		default:
 ?>
@@ -97,11 +126,11 @@
 		}
 		h3 {
 			font-size: 1.6em;
-			line-height: 1.6em;
+			line-height: 2.2em;
 			color: #777;
 		}
 		ol li {
-			margin-left: 20px;
+			margin: 0 0 15px 20px;
 		}
 		p {
 			margin-bottom: 15px;
@@ -198,7 +227,6 @@
 			margin: 0 auto;
 		}
 		#mask {
-			display:none;
 			position:absolute;
 			background: rgba(0,0,0,0.5);
 			top:0;
@@ -207,7 +235,7 @@
 			left:0;
 		}
 		#actions {
-			width: 350px;
+			width: 470px;
 			margin: 0 auto;
 		}
 		#actions li {
@@ -221,8 +249,16 @@
 			background-color: #CCC;
 			border: 1px solid black;
 		}
+		.view, #chosenfolder {
+			padding: 10px 10% 0;
+		}
+		#chosenfolder {
+			font-size: 1.4em;
+			line-height: 1.8em;
+		}
 		#message, #msgok, #msgcancel, #settings,
-		#vwupload, #vwdownload, #vwdelete, #tutorial, #vwtoken {
+		#vwupload, #vwdownload, #vwdelete,
+		#tutorial, #vwtoken, #mask {
 			display:none;
 		}
 	</style>
@@ -248,7 +284,7 @@
 		<p>GD PHP (Google Drive PHP) is a draft of a project that uses <a href="https://developers.google.com/drive/v3/web/quickstart/php" target="_blank">Drive Rest API</a> to manage files in your Google Drive Account.</p>
 		<p><a href="" id="gettingstarted">Getting Started? Click here.</a></p>
 		<div id="tutorial">
-			<h3>Step 1:</h3>
+			<h3>Step 1 - Set project and Credentials:</h3>
 			<ol>
 				<li>
 					Use <a href="https://console.developers.google.com/start/api?id=drive" target="_blank">Google Developers Console's wizard</a> to create or select a project in the Google Developers Console and automatically turn on the API. Click <strong>Continue</strong>, then <strong>Go to credentials</strong>.
@@ -263,7 +299,20 @@
 					Select the application type <strong>Other</strong>, enter the name you want (Like "GD PHP"), and click the <strong>Create</strong> button.
 				</li>
 				<li>
-					Click in the Gear at the top of this page and add the info generated there into the settings page.
+					Click in the Gear at the top of this page and fill the form with the info generated there (Client ID and Client Secret). Also, get the folder ID of the folder you want to work with, and the email of your Google Drive Account.
+				</li>
+				<li>In a Folder URL like: "https://drive.google.com/drive/u/0/folders/aaaaaaaaa", the Folder ID is "aaaaaaaaa"</li>
+			</ol>
+			<h3>Step 2 - Set the token:</h3>
+			<ol>
+				<li>
+					The configuration file that you saved the settings above is the "config.json", the information in there is used for almost every code written here. But to ensure that you have the right to tamper with your files in your Google Drive account, we have to create a token file.
+				</li>
+				<li>
+					To set the token, click in the link below. It will leads you to a Google page that will request you the authorization to see and manage your files in your Google Drive. It will allow this project to Upload, Delete and List all your files.
+				</li>
+				<li>
+					<a href="" id="sltoken">Click here to set the token</a>
 				</li>
 			</ol>
 		</div>
@@ -272,13 +321,15 @@
 		<ul id="actions">
 			<li id="slupload">Upload</li>
 			<li id="sldownload">Download</li>
+			<li id="sllist">List</li>
 			<li id="sldelete">Delete</li>
 		</ul>
+		<h4 id="chosenfolder"></h4>
 		<div id="vwupload" class="view">
-			<form method="post" action="index.php?p=upload" id="formupload">
+			<form method="post" action="index.php?p=upload" id="formupload" enctype="multipart/form-data">
 				<p>
-					<label for="file">Choose File:</label>
-					<input id="file" name="file" type="file">
+					<label for="fileupload">Choose File:</label>
+					<input id="fileupload" name="fileupload" type="file">
 				</p>
 				</p>
 					<input  id="btnupload"  class="btnok" name="send" type="button" value="Send">
@@ -286,12 +337,9 @@
 				</p>
 			</form>
 		</div>
-		<div id="vwdownload" class="view">
-			<ul id="folderfiles"></ul>
-		</div>
-		<div id="vwdelete" class="view">
-			<ul id="folderfiles"></ul>
-		</div>
+		<div id="vwdownload" class="view"></div>
+		<div id="vwlist" class="view"></div>
+		<div id="vwdelete" class="view"></div>
 		<div id="vwtoken" class="view">
 			<?php if(substr(Utils::getTokenUrl(),0,4) != "http"): ?>
 				<p><?php echo Utils::getTokenUrl() ?></p>
@@ -346,32 +394,26 @@
 		document.getElementById("tutorial").style.display = "block";
 		this.style.display = "none";
 	});
-	//The Upload's click function
-	document.getElementById("slupload").addEventListener("click", function(e){
-		e.preventDefault();
-		showVw("vwupload");
-	});
-	//The Download's click function
-	document.getElementById("sldownload").addEventListener("click", function(e){
-		e.preventDefault();
-		xhr("get","index.php?p=list",null,function(result){
-			console.log(result);
+	views = document.getElementsByClassName("view");
+	for(var i in views) {
+		if(views[i].id == undefined || isNaN(i))
+			continue;
+		document.getElementById("sl"+views[i].id.replace("vw","")).addEventListener("click", function(e){
+			e.preventDefault();
+			showVw(this.id.replace("sl","vw"));
+			if(["vwdelete","vwdownload","vwlist"].indexOf(this.id.replace("sl","vw")) >= 0) {
+				document.getElementById(this.id.replace("sl","vw")).innerHTML = "Please Wait...";
+				list(document.getElementById(this.id.replace("sl","vw")));
+			}
 		});
-		showVw("vwdownload");
-	});
-	//The Delete's click function
-	document.getElementById("sldelete").addEventListener("click", function(e){
-		e.preventDefault();
-		showVw("vwdelete");
-	});
 
+	}
 
 	//The Gear's click function
 	document.getElementById("goto-settings").addEventListener("click", function(e){
 		e.preventDefault();
 		xhr("get","config.json",null,function(result){
 			result = JSON.parse(result);
-			console.log(result);
 			document.getElementById("email").value = result.email;
 			document.getElementById("client_id").value = result.client_id;
 			document.getElementById("client_secret").value = result.client_secret;
@@ -380,13 +422,13 @@
 		document.getElementById("main").style.display = "none";
 		document.getElementById("settings").style.display = "block";
 	});
-	//The Form's cancel click function
+	//The Settings's cancel click function
 	document.getElementById("cancel").addEventListener("click", function(e){
 		e.preventDefault();
 		document.getElementById("main").style.display = "block";
 		document.getElementById("settings").style.display = "none";
 	});
-	//The Gear's Save function
+	//The Settings's Save function
 	document.getElementById("save").addEventListener("click", function(e){
 		e.preventDefault();
 		form = document.getElementById("formsettings");
@@ -398,6 +440,23 @@
 				msg("Error",result+". Want to try again?",
 					function(){return true},
 					function(){document.getElementById("cancel").click();}
+					);
+			}
+		});
+	});
+	//The Upload's Send function
+	document.getElementById("btnupload").addEventListener("click", function(e){
+		e.preventDefault();
+		form = document.getElementById("formupload");
+		console.log(new FormData(form));
+		xhr(form.method, form.action, new FormData(form), function(result){
+			if(result == "ok") {
+				msg("OK","File successfully uploaded to the folder.");
+				document.getElementById("vwupload").style.display = "none";
+			} else {
+				msg("Error",result+". Want to try again?",
+					function(){return true},
+					function(){document.getElementById("vwupload").style.display = "none";}
 					);
 			}
 		});
@@ -421,10 +480,10 @@
 		document.getElementById("vwdownload").style.display = "none";
 		document.getElementById("vwdelete").style.display = "none";
 		document.getElementById("vwtoken").style.display = "none";
+		document.getElementById("vwlist").style.display = "none";
 
 		document.getElementById(view).style.display = "block";
 	}
-
 	/**
 	 * This function manages the communication with the server.
 	 * @param  string	method		The form method
@@ -464,7 +523,10 @@
 					    else
 					    {
 					    	// Error
-					    	msg("ERROR","The Server doesn't respond.");
+					    	if(this.status == 404)
+					    		msg("ERROR","Not Found.");
+					    	else
+					    		msg("ERROR","The Server doesn't respond.");
 				    	}
 					}
 				};
@@ -520,6 +582,46 @@
 			});
 		}
 	}
+
+	function list(el) {
+		xhr("get","index.php?p=list",null,function(result){
+			try {
+				el.innerHTML = ""
+				files = JSON.parse(result);
+				ul = document.createElement("ul");
+				for(var i in files){
+					li = document.createElement("li");
+					a = document.createElement("a");
+					a.textContent = files[i].name;
+					if(el.id != "vwlist") {
+						a.href = "index.php?p="+el.id.replace("vw","")+"file&fileid="+encodeURIComponent(files[i].id)
+								+"&filetype="+encodeURIComponent(files[i].type)+"&filename="
+								+encodeURIComponent(files[i].name);
+					}
+					a.target = "_blank";
+					li.appendChild(a);
+					ul.appendChild(li);
+				}
+				el.appendChild(ul);
+				if(el.id == "vwdelete") {
+					el.innerHTML = "<p><strong>After click in the file link to delete, reload this page</strong></p>"+el.innerHTML;
+				}
+				if(files.length == 0)
+					el.innerHTML = "<p><strong>The folder is Empty</strong></p>";
+			} catch (e) {
+				el.innerHTML = "<strong>"+result+"</strong>";
+			}
+		});
+	}
+
+
+	xhr("get","index.php?p=chosenfolder",null,function(result){
+		if(result.toLocaleLowerCase().indexOf("error") >=0) {
+			document.getElementById("chosenfolder").textContent = result;
+		} else {
+			document.getElementById("chosenfolder").textContent = "Folder Name: "+result;
+		}
+	});
 </script>
 </html>
 <?php
