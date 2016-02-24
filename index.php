@@ -476,6 +476,7 @@
 		});
 	}
 	function showVw(view) {
+		document.getElementById("tutorial").style.display = "none";
 		document.getElementById("vwupload").style.display = "none";
 		document.getElementById("vwdownload").style.display = "none";
 		document.getElementById("vwdelete").style.display = "none";
