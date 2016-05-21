@@ -89,7 +89,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>GD PHP</title>
+	<title>Easy GD</title>
 	<style>
 		* {
 			padding: 0;
@@ -134,6 +134,12 @@
 		}
 		p {
 			margin-bottom: 15px;
+		}
+		#logo {
+		    width: 150px;
+		    height: auto;
+		    margin: 0 auto -30px;
+		    display: block;
 		}
 		a#goto-settings {
 			display: block;
@@ -280,8 +286,9 @@
 	<div id="main" class="wrap">
 		<a id="goto-settings"></a>
 		<div class="clear"></div>
-		<h1>GD PHP</h1>
-		<p>GD PHP (Google Drive PHP) is a draft of a project that uses <a href="https://developers.google.com/drive/v3/web/quickstart/php" target="_blank">Drive Rest API</a> to manage files in your Google Drive Account.</p>
+		<img src="img/easygd.png" alt="Easy GD" id="logo">
+		<h1>Easy GD</h1>
+		<p>Easy GD is a draft of a project that uses <a href="https://developers.google.com/drive/v3/web/quickstart/php" target="_blank">Drive Rest API</a> to manage files in your Google Drive Account.</p>
 		<p><a href="" id="gettingstarted">Getting Started? Click here.</a></p>
 		<div id="tutorial">
 			<h3>Step 1 - Set project and Credentials:</h3>
@@ -296,7 +303,7 @@
 					Select the <strong>Credentials</strong> tab, click the <strong>Add credentials</strong> button and select <strong>OAuth 2.0 client ID</strong> .
 				</li>
 				<li>
-					Select the application type <strong>Other</strong>, enter the name you want (Like "GD PHP"), and click the <strong>Create</strong> button.
+					Select the application type <strong>Other</strong>, enter the name you want (Like "Easy GD"), and click the <strong>Create</strong> button.
 				</li>
 				<li>
 					Click in the Gear at the top of this page and fill the form with the info generated there (Client ID and Client Secret). Also, get the folder ID of the folder you want to work with, and the email of your Google Drive Account.

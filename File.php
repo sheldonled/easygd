@@ -2,7 +2,7 @@
 /**
  * Class that handle the directories
  * 
- * @package gdphp
+ * @package easygd
  * @author  Sheldon Led <sheldonled.ms@gmail.com>
  */
 class File {
@@ -93,7 +93,7 @@ class File {
 		//creating the file object
 		$file = new Google_Service_Drive_DriveFile();
 		$file->setTitle($tmpfile["name"]);
-		$file->setDescription("Uploaded by GD PHP");
+		$file->setDescription("Uploaded by Easy GD");
 		$file->setMimeType($tmpfile["type"]);
 
 		//Setting the folder as parent reference

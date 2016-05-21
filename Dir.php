@@ -2,7 +2,7 @@
 /**
  * Class that handle the directories
  * 
- * @package gdphp
+ * @package easygd
  * @author  Sheldon Led <sheldonled.ms@gmail.com>
  */
 class Dir {
