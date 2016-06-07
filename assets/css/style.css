@@ -1,0 +1,192 @@
+* {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  outline: 0;
+  font-family: Arial, sans-serif;
+  font-size: 1em;
+  line-height: 1.2em;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  color:#111;
+}
+html {
+  height:100%;
+  width:100%;
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: #ccc;
+}
+h1 {
+  font-size: 2.4em;
+  line-height: 2.8em;
+  text-align: center;
+}
+h2 {
+  font-size: 2em;
+  line-height: 2em;
+  text-align: center;
+  color: #777;
+}
+h3 {
+  font-size: 1.6em;
+  line-height: 2.2em;
+  color: #777;
+}
+ol li {
+  margin: 0 0 15px 20px;
+}
+p {
+  margin-bottom: 15px;
+}
+#logo {
+    width: 150px;
+    height: auto;
+    margin: 0 auto -30px;
+    display: block;
+}
+a#goto-settings {
+  display: block;
+  margin: -40px -10px 0 0;
+  width: 40px;
+  height: 40px;
+  background: url(../img/gear.png) no-repeat;
+  background-size: 100%;
+  float:right;
+  cursor: pointer;
+}
+.clear {
+  clear:both;
+}
+.wrap {
+  width: 80%;
+  max-width: 1500px;
+  height:auto;
+  margin: 10px auto;
+  background: #f1f1f1;
+  padding: 50px 20px 100px;
+  box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+  -webkit-box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+  -moz-box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+  -o-box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  -o  -border-radius: 5px;
+}
+#message {
+  width: 300px;
+  height:auto;
+  position:absolute;
+  top: 25%;
+  left:50%;
+  margin-left:-150px;
+  background: #f1f1f1;
+  padding: 20px;
+  box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+  -webkit-box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+  -moz-box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+  -o-box-shadow: 0px 0px 15px 0px rgba(0,0,0,1);
+
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  -o  -border-radius: 5px;
+}
+#msgtitle,#msgcontent {
+  text-align: center;
+  margin-bottom: 15px;
+}
+#msgtitle {
+  font-weight: bold;
+}
+label {
+  display: inline-block;
+  width: 100px;
+}
+input {
+  width: 65%;
+  height: auto;
+  padding: 5px 10px;
+  border: 1px solid #111;
+}
+.btnok, .btncancel {
+  display: block;
+  float: right;
+  width: 150px;
+  height: auto;
+  margin: 5px;
+  padding: 10px;
+  cursor: pointer;
+}
+.btncancel {
+  background-color: #FFB6B6;
+  border: 1px solid red;
+}
+.btnok {
+  background-color: #B6E2B6;
+  border: 1px solid green;
+}
+#message .btnok, #message .btncancel {
+  padding: 10px;
+  width: 70px;
+}
+#message #btn {
+  width: 160px;
+  margin: 0 auto;
+}
+#mask {
+  position:absolute;
+  background: rgba(0,0,0,0.5);
+  top:0;
+  right:0;
+  bottom:0;
+  left:0;
+}
+#gotoversion {
+  width: 230px;
+  margin: 0 auto;
+}
+#actions {
+  width: 470px;
+  margin: 0 auto;
+}
+#gotoversion li {
+  display: inline-block;
+}
+#actions li,.buttons {
+  display: inline-block;
+  width: 100px;
+  text-align: center;
+  height: auto;
+  margin: 5px;
+  padding: 10px;
+  cursor: pointer;
+  background-color: #CCC;
+  border: 1px solid black;
+}
+.view, #chosenfolder {
+  padding: 10px 10% 0;
+}
+#chosenfolder {
+  font-size: 1.4em;
+  line-height: 1.8em;
+}
+#message, #msgok, #msgcancel, #settings,
+#vwupload, #vwdownload, #vwdelete,
+#tutorial, #vwtoken, #mask {
+  display:none;
+}
+
+#homefooter {
+  position: absolute;
+  width: 100px;
+  bottom: 20px;
+  left: 50%;
+  margin: 0 -50px;
+  text-align: center;
+}
