@@ -1,4 +1,15 @@
 <?php
+/**
+ ****************************** HOW THIS FILE WORKS ******************************
+ * First we have an autoload function, which loads the PHP files.
+ * Then, we have a switch statement that do something depending on the message sent
+ * 		by the 'p' parameter. So the switch handles the options of the app.
+ * The 'default' option of the switch is the home page of the webapp. This webapp
+ * 		is a SPA application, so the other options but 'default' just handles
+ * 		functionalities of the app, and has no VIEW, it only returns a message,
+ * 		and is used only for XHR requests.
+ * Any sugestions? email me at sheldonled.ms@gmail.com =)
+ */
 	function autoload($className) {
 	    //Manual entry
 	    require_once("Dir.php");
@@ -34,7 +45,7 @@
 				echo "ok";
 				fclose($cfgfile);
 			}
-			break;
+			break;//settings break
 		case 'chosenfolder':
 			$cfgfile = Utils::getConfigFile();
 			if(is_string($cfgfile)){
@@ -46,13 +57,13 @@
 				echo "Error while getting folder name";
 			else
 				echo $folder["name"];
-			break;//send break
+			break;//chosenfolder break
 		case 'settoken':
 			echo Utils::setToken($_POST["authcode"]);
-			break;//send break
+			break;//settoken break
 		case 'upload':
 			echo File::upload($_FILES["fileupload"]);
-			break;//send break
+			break;//upload break
 		case 'list':
 			$result = Dir::listFiles();
 			if(is_string($result))
@@ -67,7 +78,6 @@
 			else
 				echo $result;
 			break;//deletefile break
-		
 		case 'downloadfile':
 			if(strpos($_GET["filetype"],"google")) {
 				die("This is a Google File, Can not be downloaded.");
@@ -217,8 +227,7 @@
 		</form>
 	</div>
 </body>
-<script>
-</script>
+<script src="../assets/js/main.js"></script>
 </html>
 <?php
 	break;//default break;
