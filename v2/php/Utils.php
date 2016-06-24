@@ -7,6 +7,13 @@
  */
 class Utils {
 
+	public static $cfgfile = [
+		"email" => "email",
+		"client_id" => "client_id",
+		"client_secret" => "client_secret",
+		"folder_id" => "folder_id"
+	];
+
 	public static function getConfigFile(){
 		if(!is_file(dirname(__FILE__)."/config.json")) {
 			return "The config.json file doesn't exist";
@@ -28,8 +35,8 @@ class Utils {
 
 		$client->setClientId($cfgfile["client_id"]);
 		$client->setClientSecret($cfgfile["client_secret"]);
-		$client->setRedirectUri('urn:ietf:wg:oauth:2.0:oob');
-		$client->setScopes(array('https:/'.'/www.googleapis.com/auth/drive'));
+		$client->setRedirectUri("urn:ietf:wg:oauth:2.0:oob");
+		$client->setScopes(array("https://www.googleapis.com/auth/drive"));
 
 		if($token) {
 			if(file_exists(__DIR__."/token")) {

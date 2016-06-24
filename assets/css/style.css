@@ -190,3 +190,16 @@ input {
   margin: 0 -50px;
   text-align: center;
 }
+
+.clickable {
+  background-color: #f6fffa;
+  padding: 5px 10px;
+  cursor: pointer;
+  border: 1px solid #16a085;
+  border-radius: 5px;
+  list-style: none;
+  margin: 0 0 5px;
+}
+.clickable:hover {
+  background-color: #7bcebe;
+}
