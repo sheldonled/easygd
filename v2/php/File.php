@@ -6,117 +6,106 @@
  * @author  Sheldon Led <sheldonled.ms@gmail.com>
  */
 class File {
-	public static function getFileContent($fileID){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
+  public static function getFileContent($fileID){
+    $client = Utils::getGoogleClient();
 
-		$client = Utils::getGoogleClient();
+    if(is_string($client))
+      return $client;
+    $service = new Google_Service_Drive($client);
 
-		if(is_string($client))
-			return $client;
-		$service = new Google_Service_Drive($client);
+    try {
+      $file = $service->files->get($fileID);
+      $downloadUrl = $file->getDownloadUrl();
+        $request = new Google_Http_Request($downloadUrl, 'GET', null, null);
+        $httpRequest = $service->getClient()->getAuth()->authenticatedRequest($request);
 
-		try {
-			$file = $service->files->get($fileID);
-			$downloadUrl = $file->getDownloadUrl();
-    		$request = new Google_Http_Request($downloadUrl, 'GET', null, null);
-    		$httpRequest = $service->getClient()->getAuth()->authenticatedRequest($request);
+        if ($httpRequest->getResponseHttpCode() == 200) {
+        return $httpRequest->getResponseBody();
+        } else {
+          return $httpRequest->getResponseHttpCode();
+        //return "An error occurred, please try again or reset the auth";
+        }
 
-		    if ($httpRequest->getResponseHttpCode() == 200) {
-				return $httpRequest->getResponseBody();
-		    } else {
-		    	return $httpRequest->getResponseHttpCode();
-				//return "An error occurred, please try again or reset the auth";
-		    }
+      } catch(Exception $e) {
+      return "An error occurred: " . $e->getMessage();
+      }
 
-    	} catch(Exception $e) {
-			return "An error occurred: " . $e->getMessage();
-    	}
+  }
 
-	}
+  public static function getFileData($fileId){
 
-	public static function getFileData($fileId){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
+    $client = Utils::getGoogleClient();
 
-		$client = Utils::getGoogleClient();
+    if(is_string($client))
+      return $client;
 
-		if(is_string($client))
-			return $client;
+    $service = new Google_Service_Drive($client);
 
-		$service = new Google_Service_Drive($client);
+    $file = $service->files->get($fileId);
 
-		$file = $service->files->get($fileId);
+    return  [
+          "id" => $fileId,
+          "name" => $file->getTitle(),
+          "type" => $file->getMimeType()
+        ];
 
-		return	[
-					"id" => $fileId,
-					"name" => $file->getTitle(),
-					"type" => $file->getMimeType()
-				];
+  }
 
-	}
+  public static function delete($fileId){
+    $client = Utils::getGoogleClient();
 
-	public static function delete($fileId){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
+    if(is_string($client))
+      return $client;
 
-		$client = Utils::getGoogleClient();
+    $service = new Google_Service_Drive($client);
 
-		if(is_string($client))
-			return $client;
+    try {
+      $service->files->delete($fileId);
+      return "ok";
+    } catch (Exception $e) {
+      return "An error occurred: " . $e->getMessage();
+    }
+  }
 
-		$service = new Google_Service_Drive($client);
+  public static function upload($tmpfile){
+    $credentials = Utils::getConfigs();
+    if(is_string($credentials))
+      return $credentials;
 
-		try {
-			$service->files->delete($fileId);
-			return "ok";
-		} catch (Exception $e) {
-			return "An error occurred: " . $e->getMessage();
-		}
-	}
+    $client = Utils::getGoogleClient();
 
-	public static function upload($tmpfile){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
+    if(is_string($client))
+      return $client;
 
-		$client = Utils::getGoogleClient();
+    $service = new Google_Service_Drive($client);
 
-		if(is_string($client))
-			return $client;
+    //creating the file object
+    $file = new Google_Service_Drive_DriveFile();
+    $file->setTitle($tmpfile["name"]);
+    $file->setDescription("Uploaded by Easy GD");
+    $file->setMimeType($tmpfile["type"]);
 
-		$service = new Google_Service_Drive($client);
+    //Setting the folder as parent reference
+    $parent = new Google_Service_Drive_ParentReference();
+    $parent->setId($credentials->folder_id);
+    $file->setParents(array($parent));
 
-		//creating the file object
-		$file = new Google_Service_Drive_DriveFile();
-		$file->setTitle($tmpfile["name"]);
-		$file->setDescription("Uploaded by Easy GD");
-		$file->setMimeType($tmpfile["type"]);
+    try 
+    {
+      $data = file_get_contents($tmpfile["tmp_name"]);
 
-		//Setting the folder as parent reference
-		$parent = new Google_Service_Drive_ParentReference();
-		$parent->setId($cfgfile["folder"]);
-		$file->setParents(array($parent));
+      $createdFile = $service->files->insert($file, [
+        'data' => $data,
+        'mimeType' => $tmpfile["type"],
+        'uploadType' => 'media'
+      ]);
 
-		try 
-		{
-			$data = file_get_contents($tmpfile["tmp_name"]);
-
-			$createdFile = $service->files->insert($file, [
-			  'data' => $data,
-			  'mimeType' => $tmpfile["type"],
-			  'uploadType' => 'media'
-			]);
-
-			//return $createdFile;
-			return "ok";
-		}
-		catch (Exception $e)
-		{
-			print "An error ocurred: " . $e->getMessage();
-		}
-	}
+      //return $createdFile;
+      return "ok";
+    }
+    catch (Exception $e)
+    {
+      print "An error ocurred: " . $e->getMessage();
+    }
+  }
 }

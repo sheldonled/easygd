@@ -6,60 +6,45 @@
  * @author  Sheldon Led <sheldonled.ms@gmail.com>
  */
 class Dir {
-	public static function listFiles($folderId = false){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
+  public static function listFiles($folderId = false){
+    $credentials = Utils::getConfigs();
+    if(is_string($credentials))
+      return $credentials;
 
-		$client = Utils::getGoogleClient();
+    $client = Utils::getGoogleClient();
 
-		if(is_string($client))
-			return $client;
+    if(is_string($client))
+      return $client;
 
-		$service = new Google_Service_Drive($client);
+    $service = new Google_Service_Drive($client);
 
-		if(!$folderId)
-			$folderId = $cfgfile["folder"];
+    if(!$folderId)
+      $folderId = $credentials->folder_id;
 
-		$pageToken	= NULL;
-		$fileList	= array();
-		$folderId	= (is_null($folderId) ? $service->about->get()->getRootFolderId() : $folderId);
-		$i			= -1;
-		do {
-			try {
-				$parameters = array();
-				if ($pageToken) {
-				$parameters['pageToken'] = $pageToken;
-				}
+    $pageToken  = NULL;
+    $fileList   = array();
+    $folderId   = (is_null($folderId) ? $service->about->get()->getRootFolderId() : $folderId);
+    $i          = -1;
+    do {
+      try {
+        $parameters = array();
+        if ($pageToken) {
+        $parameters['pageToken'] = $pageToken;
+        }
 
-				$children = $service->children->listChildren($folderId, $parameters);
+        $children = $service->children->listChildren($folderId, $parameters);
 
-				foreach ($children->getItems() as $child) {
-					$fileId = $child->getId();
-					$file = $service->files->get($fileId);
-					$fileList[++$i] = File::getFileData($fileId);
-				}
-				$pageToken = $children->getNextPageToken();
-			} catch (Exception $e) {
-				return "An error occurred: " . $e->getMessage();
-				$pageToken = NULL;
-			}
-		} while ($pageToken);
-		return $fileList;
-	}
-
-	public static function haveFileName($folderId = false){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
-
-		$client = Utils::getGoogleClient();
-
-		if(is_string($client))
-			return $client;
-
-		$service = new Google_Service_Drive($client);
-		
-	}
-
+        foreach ($children->getItems() as $child) {
+          $fileId = $child->getId();
+          $file = $service->files->get($fileId);
+          $fileList[++$i] = File::getFileData($fileId);
+        }
+        $pageToken = $children->getNextPageToken();
+      } catch (Exception $e) {
+        return "An error occurred: " . $e->getMessage();
+        $pageToken = NULL;
+      }
+    } while ($pageToken);
+    return $fileList;
+  }
 }

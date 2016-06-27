@@ -7,100 +7,60 @@
  */
 class Utils {
 
-	public static $cfgfile = [
-		"email" => "email",
-		"client_id" => "client_id",
-		"client_secret" => "client_secret",
-		"folder_id" => "folder_id"
-	];
+  private static $cfgfile;
 
-	public static function getConfigFile(){
-		if(!is_file(dirname(__FILE__)."/config.json")) {
-			return "The config.json file doesn't exist";
-		} else {
-			$config = json_decode(file_get_contents(dirname(__FILE__)."/config.json"), true);
-			if(@$config["client_id"] == "" || @$config["client_secret"] == "" || @$config["folder"] == "") {
-				return "The config.json file is misconfigured";
-			}
-			return $config;
-		}
-	}
+  public static function setConfigs($json){
+    self::$cfgfile = json_decode($json);
+    return self::getConfigs();
+  }
+  public static function getConfigs(){
+    if(    @self::$cfgfile->client_id == ""
+        || @self::$cfgfile->client_secret == ""
+        || @self::$cfgfile->folder_id == ""
+      ) {
+        return "Credentials information is invalid";
+      } else {
+        return self::$cfgfile;
+      }
+  }
 
-	public static function getGoogleClient($token = true){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
+  public static function getGoogleClient($token = true){
+    $credentials = Utils::getConfigs();
+    if(is_string($credentials))
+      return $credentials;
 
-		$client = new Google_Client();
+    $client = new Google_Client();
 
-		$client->setClientId($cfgfile["client_id"]);
-		$client->setClientSecret($cfgfile["client_secret"]);
-		$client->setRedirectUri("urn:ietf:wg:oauth:2.0:oob");
-		$client->setScopes(array("https://www.googleapis.com/auth/drive"));
+    $client->setClientId($credentials->client_id);
+    $client->setClientSecret($credentials->client_secret);
+    $client->setRedirectUri("urn:ietf:wg:oauth:2.0:oob");
+    $client->setScopes(array("https://www.googleapis.com/auth/drive"));
 
-		if($token) {
-			if(file_exists(__DIR__."/token")) {
-				try {
-					$client->setAccessType('offline');
-					$client->setAccessToken(file_get_contents(__DIR__."/token"));
-				} catch(Exception $e) {
-					return "Token error";
-				}
-			}
-			else
-			{
-				return "Token error";
-			}
-		}
+    if($token) {
+      try {
+        $client->setAccessType('offline');
+        $client->setAccessToken(json_encode(self::$cfgfile->token));
+      } catch(Exception $e) {
+        return "Token error";
+      }
+    }
+    return $client;
+  }
 
-		return $client;
-	}
+  public static function setToken($authCode){
+    $client = Utils::getGoogleClient(false);
 
-	public static function getTokenUrl(){
-		$cfgfile = Utils::getConfigFile();
-		if(is_string($cfgfile))
-			return $cfgfile;
-		if(@$cfgfile["email"] == "")
-			return "Config.json file, missing email";
-
-		$client = Utils::getGoogleClient(false);
-
-		$client->setAccessType('offline');
-  		
-  		//Generating the auth url
-  		$tmpUrl = parse_url($client->createAuthUrl());
-		$query = explode('&', $tmpUrl['query']);
-		//Adding user_id
-		$query[] = 'user_id=' . urlencode($cfgfile["email"]);
-		//The url;
-		return $tmpUrl['scheme'].'://'.$tmpUrl['host'].
-	  			$tmpUrl['path'].'?'.implode('&', $query);
-	}
-
-	public static function setToken($authCode){
-		$client = Utils::getGoogleClient(false);
-
-		if(!$token = fopen(dirname(__FILE__)."/token","r+")) {
-			return "Error while creating the token file";
-		}
-		//Clearing the file
-		ftruncate($token, 0);
-		try
-		{
-			// Setting the auth
-			$accessToken = $client->authenticate($authCode);
-			$client->setAccessToken($accessToken);
-
-			//Writing the new token
-			if(fwrite($token, $accessToken)) {
-				fclose($token);
-				return "ok";
-			}
-		}
-		catch(Exception $e)
-		{
-			return "Error while creating the token file";
-		}
-	}
+    try
+    {
+      // Setting the auth
+      $accessToken = $client->authenticate($authCode);
+      $client->setAccessToken($accessToken);
+      return $accessToken;
+    }
+    catch(Exception $e)
+    {
+      return "Error while creating the token file";
+    }
+  }
 }
-	
+  

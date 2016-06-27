@@ -86,7 +86,7 @@
 		<div id="vwlist" class="view"></div>
 		<div id="vwdelete" class="view"></div>
 		<div id="vwtoken" class="view">
-			<form method="post" action="php/index.php?p=settoken" id="formtoken">
+			<form method="post" action="index.php?p=settoken" id="formtoken">
 				<a id="gettoken"></a>
 				<p>
 					<label for="authcode">Auth code:</label>
@@ -104,7 +104,6 @@
 	<div id="settings" class="wrap">
 		<h2>Settings</h2>
 		<form method="post" action="index.php?p=settings" id="formsettings">
-			<input id="settings_id" name="settings_id" type="hidden">
 			<p>
 				<label for="email">Email:</label>
 				<input id="email" name="email" type="email">
