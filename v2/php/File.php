@@ -46,7 +46,7 @@ class File {
     return  [
           "id" => $fileId,
           "name" => $file->getTitle(),
-          "type" => $file->getMimeType()
+          "mimeType" => $file->getMimeType()
         ];
 
   }

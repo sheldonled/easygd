@@ -61,6 +61,9 @@ a#goto-settings {
 .clear {
   clear:both;
 }
+.right {
+  float:right;
+}
 .wrap {
   width: 80%;
   max-width: 1500px;
@@ -113,6 +116,9 @@ input {
   height: auto;
   padding: 5px 10px;
   border: 1px solid #111;
+}
+input[type="radio"]{
+  width : 20px;
 }
 .btnok, .btncancel {
   display: block;

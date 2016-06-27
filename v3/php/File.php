@@ -13,23 +13,11 @@ class File {
       return $client;
     $service = new Google_Service_Drive($client);
 
-    try {
-      $file = $service->files->get($fileID);
-      $downloadUrl = $file->getDownloadUrl();
-        $request = new Google_Http_Request($downloadUrl, 'GET', null, null);
-        $httpRequest = $service->getClient()->getAuth()->authenticatedRequest($request);
-
-        if ($httpRequest->getResponseHttpCode() == 200) {
-        return $httpRequest->getResponseBody();
-        } else {
-          return $httpRequest->getResponseHttpCode();
-        //return "An error occurred, please try again or reset the auth";
-        }
-
-      } catch(Exception $e) {
+    try{
+      return $service->files->get($fileID, ['alt' => 'media']);
+    } catch(Exception $e) {
       return "An error occurred: " . $e->getMessage();
-      }
-
+    }
   }
 
   public static function getFileData($fileId){
@@ -45,8 +33,8 @@ class File {
 
     return  [
           "id" => $fileId,
-          "name" => $file->getTitle(),
-          "type" => $file->getMimeType()
+          "name" => $file->getName(),
+          "mimeType" => $file->getMimeType()
         ];
 
   }
@@ -79,23 +67,20 @@ class File {
 
     $service = new Google_Service_Drive($client);
 
-    //creating the file object
-    $file = new Google_Service_Drive_DriveFile();
-    $file->setTitle($tmpfile["name"]);
-    $file->setDescription("Uploaded by Easy GD");
-    $file->setMimeType($tmpfile["type"]);
-
-    //Setting the folder as parent reference
-    $parent = new Google_Service_Drive_ParentReference();
-    $parent->setId($credentials->folder_id);
-    $file->setParents(array($parent));
+    //creating the fileMetadata object
+    $fileMetadata = new Google_Service_Drive_DriveFile([
+      'name' => $tmpfile["name"],
+      'parents' => array($credentials->folder_id)
+    ]);
+    $fileMetadata->setDescription("Uploaded by Easy GD (v3)");
+    $fileMetadata->setMimeType($tmpfile["type"]);
 
     try 
     {
-      $data = file_get_contents($tmpfile["tmp_name"]);
+      $fileData = file_get_contents($tmpfile["tmp_name"]);
 
-      $createdFile = $service->files->insert($file, [
-        'data' => $data,
+      $createdFile = $service->files->create($fileMetadata, [
+        'data' => $fileData,
         'mimeType' => $tmpfile["type"],
         'uploadType' => 'media'
       ]);

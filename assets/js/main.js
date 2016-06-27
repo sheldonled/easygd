@@ -276,7 +276,7 @@
                 li.textContent = files[i].name;
                 li.classList = "clickable drivefile";
                 li.id = files[i].id;
-                li.name = files[i].type;
+                li.name = files[i].mimeType;
                 ul.appendChild(li);
               }
               el.appendChild(ul);
@@ -287,14 +287,7 @@
                   cb(el);
 
             } catch (e) {
-              if(result.toLocaleLowerCase.indexOf("error") >= 0){
-                el.innerHTML = "Updating List...";
-                window.setTimeout(function(){
-                  app.list(el, function(el){app.listevent(el);})
-                }, 100);
-              } else {
                 el.innerHTML = "<strong>"+result+"</strong>";
-              }
             }
           });
         }
@@ -349,137 +342,220 @@
           app.xhr("post",url,"credentials="+JSON.stringify(obj),function(result){
             if(result.toLocaleLowerCase().indexOf("error") >=0)
               app.msg("ERROR",result);
-            else
+            else{
               app.msg("Message",result);
+              window.setTimeout(function(){
+                app.list(app.views.vwdelete, app.listevent, app.views.vwdelete);
+              }, 100);
+            }
           });
         }
       });
-      window.setTimeout(function(){
-        app.list(app.views.vwdelete, app.listevent, app.views.vwdelete);
-      }, 100);
+    },
+    showChosenFolderName : function(){
+      var url = "";
+      switch(app.version) {
+        case "v2-php":
+        case "v3-php":
+          url = "php/index.php?p=chosenfolder";
+          easydgDB.listAll(function(error,obj){
+            if(error && (error.indexOf("Empty") <= 0)){
+              app.msg("ERROR", "indexedDB error: "+error);
+              return;
+            }
+
+            if(obj) {
+              app.xhr("post",url,"credentials="+JSON.stringify(obj),function(result){
+                if(result.toLocaleLowerCase().indexOf("error") >=0)
+                  document.getElementById("chosenfolder").textContent = result;
+                else
+                  document.getElementById("chosenfolder").textContent = "Folder Name: "+result;
+              });
+            }
+          });
+          break;
+        case "v3-js":
+          gapi.client.load('drive', 'v3', function(){
+            easydgDB.listAll(function(error,obj){
+              if(error && (error.indexOf("Empty") <= 0)){
+                app.msg("ERROR", "indexedDB error: "+error);
+                return;
+              }
+              if(obj) {
+                var request = gapi.client.drive.files.get({ fileId : obj.folder_id});
+                request.execute(function(resp) {
+                  document.getElementById("chosenfolder").textContent = resp.name;
+                });
+              }
+            });
+          });
+          break;
+        default:
+          this.msg("ERROR","App Version isn't setted");
+          break;
+      }
     }
   };
 
+/*************************************************************************************************
+                                          INDEXEDDB
+      Handles IndeedDB database to save your information in your side of the app =)
+*************************************************************************************************/
+var easydgDB = {
+  dbname : "easydg",
+  idb : (window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB),
+  db : null,
+  openDB : function(){
+    var request = this.idb.open(this.dbname, 1);
 
-/**
- * Handle IndeedDB database to save your information in your side of the app =)
- */
-  var easydgDB = {
-    dbname : "easydg",
-    idb : (window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB),
-    db : null,
-    openDB : function(){
-      var request = this.idb.open(this.dbname, 1);
-
-      request.onerror = function(e) {
-        // Error Alert
-        app.msg("ERROR","Database error (indexedDB): " + e.target.errorCode);
-      };
-      request.onsuccess = function(e){
-        easydgDB.db = e.target.result;
-      };
-      /**
-       * Initial setup of the DB
-       */
-      request.onupgradeneeded = function(e){
-        easydgDB.db = e.target.result;
-        
-        /**
-         * Creating objectStore
-         */
-        var objectStore = easydgDB.db.createObjectStore(easydgDB.dbname, {
-            keyPath: "id",
-            autoIncrement: true
-        });
-        
-        //Creating index
-        objectStore.createIndex("email", "email", {
-            unique:true
-        });
-      };
-    },
+    request.onerror = function(e) {
+      // Error Alert
+      app.msg("ERROR","Database error (indexedDB): " + e.target.errorCode);
+    };
+    request.onsuccess = function(e){
+      easydgDB.db = e.target.result;
+    };
     /**
-     * List all objects and call the callback function to each object
-     * PS: this was made thinking of array.push
+     * Initial setup of the DB
      */
-    listAll : function (cb) {
-      var objectStore = easydgDB.db.transaction(easydgDB.dbname).objectStore(easydgDB.dbname),
-          count       = objectStore.index("email").count();
-
-      count.onsuccess = function(e) {
-        if(count.result > 0) {
-          objectStore.openCursor().onsuccess = function(e) {
-            var cursor = e.target.result;
-            if(cursor) {
-              if(cb)
-                cb(null, cursor.value);
-
-              cursor.continue();
-            }
-          };
-        } else {
-          return cb("DataBase is Empty, you have to set the credentials");
-        }
-      };
-    },
-    insert : function (obj, cb) {
-      var transaction = easydgDB.db.transaction([easydgDB.dbname], "readwrite");
-
-      transaction.onerror = function(e) {
-        app.msg("ERROR","Error message: "+e.target.error);
-        if (cb)
-          cb({error : e}, null);
-      };
-      var objectStore = transaction.objectStore(easydgDB.dbname);
-      if (!obj.created)
-        obj.createdDate = Date.now();
-
-      var request = objectStore.put(obj);
-      request.onsuccess = function(e){
-        if(cb){
-          objectStore.get(request.result).onsuccess = function(e) {
-            cb(null, e.target.result);
-          };
-        }
-      };
-    },
-    update : function (obj, cb) {
-      var request = easydgDB.db.transaction([easydgDB.dbname], "readwrite").objectStore(easydgDB.dbname).get(parseInt(obj.id));
-      request.onsuccess = function (e) {
-        var old = request.result;
-        if(obj.token)
-          old.token = obj.token;
-        if(obj.email)
-          old.email = obj.email;
-        if(obj.client_id)
-          old.client_id = obj.client_id;
-        if(obj.client_secret)
-          old.client_secret = obj.client_secret;
-        if(obj.folder_id)
-          old.folder_id = obj.folder_id;
-
-        old.modfiedDate = Date.now();
-        easydgDB.db.transaction([easydgDB.dbname], "readwrite").objectStore(easydgDB.dbname).put(old);
-        if(cb)
-          cb();
-      };
-    },
-    del : function (id, cb) {
-      var request = easydgDB.db.transaction([easydgDB.dbname], "readwrite").objectStore(easydgDB.dbname).delete(id);
-      request.onsuccess = function (event) {
-        if(cb)
-          cb();
-      };
-    },
-    delAll : function() {
-      easydgDB.listAll(function(error,obj){
-        if(!error)
-          easydgDB.del(obj.id);
+    request.onupgradeneeded = function(e){
+      easydgDB.db = e.target.result;
+      
+      /**
+       * Creating objectStore
+       */
+      var objectStore = easydgDB.db.createObjectStore(easydgDB.dbname, {
+          keyPath: "id",
+          autoIncrement: true
       });
-    }
-  }; // easygdDB;
-  easydgDB.openDB();
+      
+      //Creating index
+      objectStore.createIndex("email", "email", {
+          unique:true
+      });
+    };
+  },
+  /**
+   * List all objects and call the callback function to each object
+   * PS: this was made thinking of array.push
+   */
+  listAll : function (cb) {
+    var objectStore = easydgDB.db.transaction(easydgDB.dbname).objectStore(easydgDB.dbname),
+        count       = objectStore.index("email").count();
 
+    count.onsuccess = function(e) {
+      if(count.result > 0) {
+        objectStore.openCursor().onsuccess = function(e) {
+          var cursor = e.target.result;
+          if(cursor) {
+            if(cb)
+              cb(null, cursor.value);
+
+            cursor.continue();
+          }
+        };
+      } else {
+        return cb("DataBase is Empty, you have to set the credentials");
+      }
+    };
+  },
+  insert : function (obj, cb) {
+    var transaction = easydgDB.db.transaction([easydgDB.dbname], "readwrite");
+
+    transaction.onerror = function(e) {
+      app.msg("ERROR","Error message: "+e.target.error);
+      if (cb)
+        cb({error : e}, null);
+    };
+    var objectStore = transaction.objectStore(easydgDB.dbname);
+    if (!obj.created)
+      obj.createdDate = Date.now();
+
+    var request = objectStore.put(obj);
+    request.onsuccess = function(e){
+      if(cb){
+        objectStore.get(request.result).onsuccess = function(e) {
+          cb(null, e.target.result);
+        };
+      }
+    };
+  },
+  update : function (obj, cb) {
+    var request = easydgDB.db.transaction([easydgDB.dbname], "readwrite").objectStore(easydgDB.dbname).get(parseInt(obj.id));
+    request.onsuccess = function (e) {
+      var old = request.result;
+      if(obj.token)
+        old.token = obj.token;
+      if(obj.email)
+        old.email = obj.email;
+      if(obj.client_id)
+        old.client_id = obj.client_id;
+      if(obj.client_secret)
+        old.client_secret = obj.client_secret;
+      if(obj.folder_id)
+        old.folder_id = obj.folder_id;
+
+      old.modfiedDate = Date.now();
+      easydgDB.db.transaction([easydgDB.dbname], "readwrite").objectStore(easydgDB.dbname).put(old);
+      if(cb)
+        cb();
+    };
+  },
+  del : function (id, cb) {
+    var request = easydgDB.db.transaction([easydgDB.dbname], "readwrite").objectStore(easydgDB.dbname).delete(id);
+    request.onsuccess = function (event) {
+      if(cb)
+        cb();
+    };
+  },
+  delAll : function() {
+    easydgDB.listAll(function(error,obj){
+      if(!error)
+        easydgDB.del(obj.id);
+    });
+  }
+}; // easygdDB;
+easydgDB.openDB();
+
+/*************************************************************************************************
+                                          JS API(v3)
+                            Handles Google Drive using JS API v3
+*************************************************************************************************/
+var jsApi = {
+  scopes : ["https://www.googleapis.com/auth/drive"],
+  checkAuth : function(immediate){
+    easydgDB.listAll(function(error,obj){
+      if(error && (error.indexOf("Empty") <= 0)){
+        app.msg("ERROR", "indexedDB error: "+error);
+        return;
+      }
+      gapi.auth.authorize(
+        {
+          'client_id': obj.client_id,
+          'scope': jsApi.scopes.join(' '),
+          'immediate': immediate
+        }, 
+        jsApi.handleAuthResult
+      );
+    });
+  },
+  handleAuthResult : function(authResult){
+    if (authResult && !authResult.error)
+      app.showChosenFolderName();
+    else if(authResult.error.toLocaleLowerCase.indexOf("immediate") >= 0)
+      this.checkAuth(false);
+    else
+      app.msg("ERROR",authResult.error);
+  },
+  upload : function(){},
+  download : function(){},
+  list : function(){},
+  delete : function(){},
+}; //jsApi
+
+/*************************************************************************************************
+                                          INLINE CODE
+*************************************************************************************************/
   app.el.gettingstarted.addEventListener("click", function(e){
     e.preventDefault();
     app.el.tutorial.style.display = "block";
@@ -576,38 +652,20 @@
     });
   });
 
+  var radios = document.getElementById("formsettings").apiv;
+  for(var i = 0; i<radios.length; i++){
+    radios[i].addEventListener('click', function(){
+      app.version = document.getElementById("appversion").value = this.value;
+      if(app.version != "v3-js")
+        window.setTimeout(app.showChosenFolderName,200);
+      else
+        jsApi.checkAuth(true);
+    })
+  }
 
   //Init
-  window.setTimeout(function(){
-    var url = "";
-    switch(app.version) {
-      case "v2-php":
-      case "v3-php":
-        url = "php/index.php?p=chosenfolder";
-        break;
-      case "v3-js":
-        url = "https://www.googleapis.com/drive/v3/files";
-        break;
-      default:
-        this.msg("ERROR","App Version isn't setted");
-        break;
-    }
-
-    easydgDB.listAll(function(error,obj){
-      if(error && (error.indexOf("Empty") <= 0)){
-        app.msg("ERROR", "indexedDB error: "+error);
-        return;
-      }
-
-      if(obj) {
-        app.xhr("post",url,"credentials="+JSON.stringify(obj),function(result){
-          if(result.toLocaleLowerCase().indexOf("error") >=0)
-            document.getElementById("chosenfolder").textContent = result;
-          else
-            document.getElementById("chosenfolder").textContent = "Folder Name: "+result;
-        });
-      }
-    });
-  },200);
-
+  if(app.version != "v3-js")
+    window.setTimeout(app.showChosenFolderName,200);
+  else
+    window.setTimeout(jsApi.checkAuth,200,true);
 })();

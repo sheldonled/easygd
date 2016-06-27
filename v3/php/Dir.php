@@ -22,23 +22,21 @@ class Dir {
       $folderId = $credentials->folder_id;
 
     $pageToken  = NULL;
-    $fileList   = array();
+    $fileList   = [];
     $folderId   = (is_null($folderId) ? $service->about->get()->getRootFolderId() : $folderId);
     $i          = -1;
     do {
       try {
-        $parameters = array();
+        $parameters = ["q" => "'".$folderId."' in parents"];
         if ($pageToken) {
         $parameters['pageToken'] = $pageToken;
         }
 
-        $children = $service->children->listChildren($folderId, $parameters);
+        $children = $service->files->listFiles($parameters);
 
-        foreach ($children->getItems() as $child) {
-          $fileId = $child->getId();
-          $file = $service->files->get($fileId);
-          $fileList[++$i] = File::getFileData($fileId);
-        }
+        foreach ($children->getFiles() as $child)
+          $fileList[++$i] = $child;
+        
         $pageToken = $children->getNextPageToken();
       } catch (Exception $e) {
         return "An error occurred: " . $e->getMessage();
