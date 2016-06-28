@@ -160,7 +160,7 @@
     upload : function(){
       var doRequest   = null,
           afterUpload = function(result){
-            if(result == "ok") {
+            if(result == "ok" || !result.error) {
               app.msg("OK","File successfully uploaded to the folder.");
               for(var i in app.views)
                 if(app.views[i].id)
@@ -180,32 +180,48 @@
       switch(app.version) {
         case "v2-php":
         case "v3-php":
-          doRequest = function() {
+          doRequest = function(obj) {
             var formdata = new FormData();
             formdata.append('fileupload', app.el.formupload.fileupload.files[0]);
             formdata.append('credentials', JSON.stringify(obj));
 
-            app.xhr(app.el.formupload.method, "php/index.php?p=upload", formdata, afterUpload,true);
+            app.xhr(app.el.formupload.method, "php/index.php?p=upload", formdata, function(result){afterUpload(result)},true);
           };
           break;
         case "v3-js":
-          doRequest = function(){
+          doRequest = function(obj){
             var filereader = new FileReader();
             filereader.readAsBinaryString(app.el.formupload.fileupload.files[0]);
             filereader.onload = function(e){
-              var request = gapi.client.drive.files.create({
-                "data": filereader.result,
-                "name": app.el.formupload.fileupload.files[0].name,
-                "mimeType": app.el.formupload.fileupload.files[0].type,
-                "parents": ["0B0rcmL61G1WdUnVZcUVqdkIwSEk"]
-              });
-              request.execute(function(resp) {
-                if(resp.error)
-                  app.msg("ERROR", resp.error.message);
-                window.setTimeout(function(){
-                  app.list(app.views.vwdelete, app.listevent, app.views.vwdelete);
-                }, 100);
-              });
+              var boundary = '-------314159265358979323846',
+                  delimiter = "\r\n--" + boundary + "\r\n",
+                  close_delim = "\r\n--" + boundary + "--",
+                  metadata = {
+                    'name': app.el.formupload.fileupload.files[0].name,
+                    'mimeType': app.el.formupload.fileupload.files[0].type,
+                    'parents': [obj.folder_id]
+                  },
+                  multipartRequestBody =
+                    delimiter +
+                    'Content-Type: application/json\r\n\r\n' +
+                    JSON.stringify(metadata) +
+                    delimiter +
+                    'Content-Type: ' + app.el.formupload.fileupload.files[0].type + '\r\n' +
+                    'Content-Transfer-Encoding: base64\r\n' +
+                    '\r\n' +
+                    btoa(filereader.result) +
+                    close_delim,
+                  request = gapi.client.request({
+                    'path': '/upload/drive/v3/files',
+                    'method': 'POST',
+                    'params': {'uploadType': 'multipart'},
+                    'headers': {
+                      'Content-Type': 'multipart/mixed; boundary="' + boundary + '"'
+                    },
+                    'body': multipartRequestBody
+                  });
+
+                  request.execute(function(file){afterUpload(file)});
             }
           };
           break;
@@ -218,9 +234,10 @@
           app.msg("ERROR", "indexedDB error: "+error);
           return;
         }
-
-        if(obj)
-          doRequest();
+        if(obj){
+          app.msg("Message", "Please wait...");
+          doRequest(obj);
+        }
       });
     },
     download : function(filename, fileid, filetype){
