@@ -158,31 +158,8 @@
       }
     },
     upload : function(){
-      var url = "";
-      switch(app.version) {
-        case "v2-php":
-        case "v3-php":
-          url = "php/index.php?p=upload";
-          break;
-        case "v3-js":
-          url = "https://www.googleapis.com/drive/v3/files";
-          break;
-        default:
-          app.msg("ERROR","App Version isn't setted");
-          break;
-      }
-      easydgDB.listAll(function(error,obj){
-        if(error && (error.indexOf("Empty") <= 0)){
-          app.msg("ERROR", "indexedDB error: "+error);
-          return;
-        }
-
-        if(obj) {
-          var formdata = new FormData();
-          formdata.append('fileupload', app.el.formupload.fileupload.files[0]);
-          formdata.append('credentials', JSON.stringify(obj));
-
-          app.xhr(app.el.formupload.method, url, formdata, function(result){
+      var doRequest   = null,
+          afterUpload = function(result){
             if(result == "ok") {
               app.msg("OK","File successfully uploaded to the folder.");
               for(var i in app.views)
@@ -199,25 +176,41 @@
                 }
               );
             }
-          },true);
-        }
-      });
-    },
-    download : function(filename, fileid, filetype){
-      var url = "";
-      switch(this.version) {
+          };
+      switch(app.version) {
         case "v2-php":
         case "v3-php":
-          url = "php/index.php?p=downloadfile&fileid="+encodeURIComponent(fileid)
-                  +"&filetype="+encodeURIComponent(filetype)+"&filename="
-                  +encodeURIComponent(filename);
+          doRequest = function() {
+            var formdata = new FormData();
+            formdata.append('fileupload', app.el.formupload.fileupload.files[0]);
+            formdata.append('credentials', JSON.stringify(obj));
+
+            app.xhr(app.el.formupload.method, "php/index.php?p=upload", formdata, afterUpload,true);
+          };
           break;
         case "v3-js":
-          url = "https://www.googleapis.com/drive/v3/files";
+          doRequest = function(){
+            var filereader = new FileReader();
+            filereader.readAsBinaryString(app.el.formupload.fileupload.files[0]);
+            filereader.onload = function(e){
+              var request = gapi.client.drive.files.create({
+                "data": filereader.result,
+                "name": app.el.formupload.fileupload.files[0].name,
+                "mimeType": app.el.formupload.fileupload.files[0].type,
+                "parents": ["0B0rcmL61G1WdUnVZcUVqdkIwSEk"]
+              });
+              request.execute(function(resp) {
+                if(resp.error)
+                  app.msg("ERROR", resp.error.message);
+                window.setTimeout(function(){
+                  app.list(app.views.vwdelete, app.listevent, app.views.vwdelete);
+                }, 100);
+              });
+            }
+          };
           break;
         default:
-          this.msg("ERROR","App Version isn't setted");
-          return;
+          app.msg("ERROR","App Version isn't setted");
           break;
       }
       easydgDB.listAll(function(error,obj){
@@ -226,7 +219,13 @@
           return;
         }
 
-        if(obj) {
+        if(obj)
+          doRequest();
+      });
+    },
+    download : function(filename, fileid, filetype){
+      var doRequest = function(url, obj){
+        if(obj){
           var form        = document.createElement("form"),
               credentials = document.createElement("input");
 
@@ -240,34 +239,47 @@
           form.appendChild(credentials);
           window.open(location.href, "DownloadWindow").focus();
           form.submit();
+        } else {
+          window.open(url, "DownloadWindow");
         }
-      });
-    },
-    list : function(el, cb){
-      var url = "";
+      };
       switch(this.version) {
         case "v2-php":
         case "v3-php":
-          url = "php/index.php?p=list";
+          doRequest("php/index.php?p=downloadfile&fileid="+encodeURIComponent(fileid)
+                  +"&filetype="+encodeURIComponent(filetype)+"&filename="
+                  +encodeURIComponent(filename));
           break;
         case "v3-js":
-          url = "https://www.googleapis.com/drive/v3/files";
+          easydgDB.listAll(function(error,obj){
+            if(error && (error.indexOf("Empty") <= 0)){
+              app.msg("ERROR", "indexedDB error: "+error);
+              return;
+            }
+            if(obj) {
+              var request = gapi.client.drive.files.get({
+                fileId   : fileid, //I wanted to add all fields even though I didn't needed just to now how they are and how to call them in the params.
+                'fields' : "appProperties,capabilities,contentHints,createdTime,description,explicitlyTrashed,fileExtension,folderColorRgb,fullFileExtension,headRevisionId,iconLink,id,imageMediaMetadata,isAppAuthorized,kind,lastModifyingUser,md5Checksum,mimeType,modifiedByMeTime,modifiedTime,name,originalFilename,ownedByMe,owners,parents,permissions,properties,quotaBytesUsed,shared,sharedWithMeTime,sharingUser,size,spaces,starred,thumbnailLink,trashed,version,videoMediaMetadata,viewedByMe,viewedByMeTime,viewersCanCopyContent,webContentLink,webViewLink,writersCanShare"
+              });
+              request.execute(function(resp) {
+                doRequest(resp.webContentLink);
+              });
+            }
+          });
+          return;
           break;
         default:
           this.msg("ERROR","App Version isn't setted");
+          return;
           break;
       }
-      easydgDB.listAll(function(error,obj){
-        if(error && (error.indexOf("Empty") <= 0)){
-          app.msg("ERROR", "indexedDB error: "+error);
-          return;
-        }
-
-        if(obj) {
-          app.xhr("post",url,"credentials="+JSON.stringify(obj),function(result){
+    },
+    list : function(el, cb){
+      var url = "",
+          afterlist = function(el, result, cb){
             try {
               el.innerHTML = ""
-              var files = JSON.parse(result),
+              var files = ((typeof result == "object") ? result : JSON.parse(result)),
                   ul = document.createElement("ul");
 
               for(var i in files){
@@ -289,9 +301,51 @@
             } catch (e) {
                 el.innerHTML = "<strong>"+result+"</strong>";
             }
+        };
+      switch(this.version) {
+        case "v2-php":
+        case "v3-php":
+          url = "php/index.php?p=list";
+          easydgDB.listAll(function(error,obj){
+            if(error && (error.indexOf("Empty") <= 0)){
+              app.msg("ERROR", "indexedDB error: "+error);
+              return;
+            }
+            if(obj) {
+              app.xhr("post",url,"credentials="+JSON.stringify(obj),function(result){afterlist(el, result, cb);});
+            }
           });
-        }
-      });
+          break;
+        case "v3-js":
+          easydgDB.listAll(function(error,obj){
+            if(error && (error.indexOf("Empty") <= 0)){
+              app.msg("ERROR", "indexedDB error: "+error);
+              return;
+            }
+            if(obj) {
+              var getAllFiles = function(request, result) {
+                request.execute(function(resp) {
+                  result = result.concat(resp.files);
+                  var nextPageToken = resp.nextPageToken;
+                  if (nextPageToken) {
+                    request = gapi.client.drive.files.list({
+                      'q' : "'"+obj.folder_id+"' in parents",
+                      'pageToken': nextPageToken
+                    });
+                    getAllFiles(request, result);
+                  } else {
+                    afterlist(el, result, cb);
+                  }
+                });
+              }
+              getAllFiles(gapi.client.drive.files.list({'q' : "'"+obj.folder_id+"' in parents"}), []);
+            }
+          });
+          break;
+        default:
+          this.msg("ERROR","App Version isn't setted");
+          break;
+      }
     },
     listevent : function(el) {
       var fileslist = document.getElementsByClassName("drivefile");
@@ -315,42 +369,48 @@
       }
     },
     delete : function(filename, fileid, filetype){
-      var url;
       this.views.vwdelete.innerHTML = "Updating List...";
       switch(this.version) {
         case "v2-php":
         case "v3-php":
-          url = "php/index.php?p=deletefile&fileid="+encodeURIComponent(fileid)
+          easydgDB.listAll(function(error,obj){
+            if(error && (error.indexOf("Empty") <= 0)){
+              app.msg("ERROR", "indexedDB error: "+error);
+              return;
+            }
+            if(obj) {
+              app.xhr("post",
+                "php/index.php?p=deletefile&fileid="+encodeURIComponent(fileid)
                   +"&filetype="+encodeURIComponent(filetype)+"&filename="
-                  +encodeURIComponent(filename);
+                  +encodeURIComponent(filename),
+                "credentials="+JSON.stringify(obj),function(result){
+                if(result.toLocaleLowerCase().indexOf("error") >=0)
+                  app.msg("ERROR",result);
+                else{
+                  app.msg("Message",result);
+                  window.setTimeout(function(){
+                    app.list(app.views.vwdelete, app.listevent, app.views.vwdelete);
+                  }, 100);
+                }
+              });
+            }
+          });
           break;
         case "v3-js":
-          url = "https://www.googleapis.com/drive/v3/files";
+          var request = gapi.client.drive.files.delete({fileId : fileid});
+          request.execute(function(resp) {
+            if(resp.error)
+              app.msg("ERROR", resp.error.message);
+            window.setTimeout(function(){
+              app.list(app.views.vwdelete, app.listevent, app.views.vwdelete);
+            }, 100);
+          });
           break;
         default:
           this.msg("ERROR","App Version isn't setted");
           return;
           break;
       }
-      easydgDB.listAll(function(error,obj){
-        if(error && (error.indexOf("Empty") <= 0)){
-          app.msg("ERROR", "indexedDB error: "+error);
-          return;
-        }
-
-        if(obj) {
-          app.xhr("post",url,"credentials="+JSON.stringify(obj),function(result){
-            if(result.toLocaleLowerCase().indexOf("error") >=0)
-              app.msg("ERROR",result);
-            else{
-              app.msg("Message",result);
-              window.setTimeout(function(){
-                app.list(app.views.vwdelete, app.listevent, app.views.vwdelete);
-              }, 100);
-            }
-          });
-        }
-      });
     },
     showChosenFolderName : function(){
       var url = "";
@@ -370,6 +430,7 @@
                   document.getElementById("chosenfolder").textContent = result;
                 else
                   document.getElementById("chosenfolder").textContent = "Folder Name: "+result;
+                app.el.msgok.click();
               });
             }
           });
@@ -381,12 +442,15 @@
                 app.msg("ERROR", "indexedDB error: "+error);
                 return;
               }
-              if(obj) {
-                var request = gapi.client.drive.files.get({ fileId : obj.folder_id});
-                request.execute(function(resp) {
-                  document.getElementById("chosenfolder").textContent = resp.name;
-                });
-              }
+
+              var request = gapi.client.drive.files.get({ fileId : obj.folder_id});
+              request.execute(function(resp) {
+                if(resp.name)
+                  document.getElementById("chosenfolder").textContent = "Folder Name: "+resp.name;
+                else
+                  document.getElementById("chosenfolder").textContent = "Folder ID is missing.";
+                app.el.msgok.click();
+              });
             });
           });
           break;
@@ -396,7 +460,7 @@
       }
     }
   };
-
+  app.msg("LOADING","Please Wait...");
 /*************************************************************************************************
                                           INDEXEDDB
       Handles IndeedDB database to save your information in your side of the app =)
@@ -529,28 +593,40 @@ var jsApi = {
         app.msg("ERROR", "indexedDB error: "+error);
         return;
       }
-      gapi.auth.authorize(
-        {
-          'client_id': obj.client_id,
-          'scope': jsApi.scopes.join(' '),
-          'immediate': immediate
-        }, 
-        jsApi.handleAuthResult
-      );
+      if(obj){
+        gapi.auth.authorize(
+          {
+            'client_id': obj.client_id,
+            'scope': jsApi.scopes.join(' '),
+            'immediate': immediate
+          }, 
+          jsApi.handleAuthResult
+        );
+      } else {
+        app.msg("ERROR", "Settings missing");
+      }
     });
   },
   handleAuthResult : function(authResult){
-    if (authResult && !authResult.error)
-      app.showChosenFolderName();
-    else if(authResult.error.toLocaleLowerCase.indexOf("immediate") >= 0)
-      this.checkAuth(false);
+    if (authResult && !authResult.error){
+      easydgDB.listAll(function(error,obj){
+        if(error && (error.indexOf("Empty") <= 0)){
+          app.msg("ERROR", "indexedDB error: "+error);
+          return;
+        }
+
+        if(obj) {
+          obj.token = {access_token : authResult.access_token};
+          easydgDB.update(obj);
+          app.showChosenFolderName();
+        }
+      });
+    }
+    else if(authResult.error.indexOf("immediate") >= 0)
+      jsApi.checkAuth(false);
     else
       app.msg("ERROR",authResult.error);
-  },
-  upload : function(){},
-  download : function(){},
-  list : function(){},
-  delete : function(){},
+  }
 }; //jsApi
 
 /*************************************************************************************************
@@ -653,19 +729,21 @@ var jsApi = {
   });
 
   var radios = document.getElementById("formsettings").apiv;
-  for(var i = 0; i<radios.length; i++){
-    radios[i].addEventListener('click', function(){
-      app.version = document.getElementById("appversion").value = this.value;
-      if(app.version != "v3-js")
-        window.setTimeout(app.showChosenFolderName,200);
-      else
-        jsApi.checkAuth(true);
-    })
+  if(radios){
+    for(var i = 0; i<radios.length; i++){
+      radios[i].addEventListener('click', function(){
+        app.version = document.getElementById("appversion").value = this.value;
+        if(app.version != "v3-js")
+          window.setTimeout(app.showChosenFolderName,200);
+        else
+          jsApi.checkAuth(true);
+      })
+    }
   }
 
   //Init
   if(app.version != "v3-js")
-    window.setTimeout(app.showChosenFolderName,200);
+    window.setTimeout(app.showChosenFolderName,500);
   else
-    window.setTimeout(jsApi.checkAuth,200,true);
+    window.setTimeout(jsApi.checkAuth,500,true);
 })();
