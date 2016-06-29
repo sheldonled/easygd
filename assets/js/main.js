@@ -294,7 +294,7 @@
     list : function(el, cb){
       var url = "",
           afterlist = function(el, result, cb){
-            //try {
+            try {
               el.innerHTML = ""
               var files = ((typeof result == "object") ? result : JSON.parse(result)),
                   ul = document.createElement("ul");
@@ -316,9 +316,9 @@
                 if(cb)
                   cb(el);
 
-            //} catch (e) {
-            //    el.innerHTML = "<strong>"+result+"</strong>";
-            //}
+            } catch (e) {
+                el.innerHTML = "<strong>"+result+"</strong>";
+            }
         };
       switch(this.version) {
         case "v2-php":
